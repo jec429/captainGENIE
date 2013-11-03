@@ -1,0 +1,13 @@
+package captainGENIE
+
+use captainRelease
+use genie v* LCG_Interfaces
+
+application gevgen_capt ../app/captainGENIE.cxx
+
+path_remove PATH "$(CAPTAINGENIEROOT)/scripts"
+path_prepend PATH "$(CAPTAINGENIEROOT)/scripts""
+
+path_remove PATH "$(CAPTAINGENIEROOT)/$(captainGENIE_tag)"
+path_prepend PATH "$(CAPTAINGENIEROOT)/$(captainGENIE_tag)""
+
