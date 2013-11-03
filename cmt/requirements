@@ -1,6 +1,5 @@
 package captainGENIE
 
-use captainRelease
 use genie v* LCG_Interfaces
 
 application gevgen_capt ../app/captainGENIE.cxx
