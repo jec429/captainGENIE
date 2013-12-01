@@ -676,11 +676,11 @@ void GetCommandLineArgs(int argc, char ** argv)
 
   // random number seed
   if( parser.OptionExists("seed") ) {
-    LOG("gevgen_capt", pINFO) << "Reading random number seed";
     gOptRanSeed = parser.ArgAsLong("seed");
+    LOG("gevgen_capt", pINFO) << "Reading random number seed " << gOptRanSeed;
   } else {
-    LOG("gevgen_capt", pINFO) << "Unspecified random number seed - Using default";
     gOptRanSeed = 0;
+    LOG("gevgen_capt", pINFO) << "Unspecified random number seed - Using default of " << gOptRanSeed;
   }
 
   // input cross-section file
