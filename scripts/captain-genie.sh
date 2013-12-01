@@ -4,27 +4,20 @@
 # captControl.  It uses the gevgen_capt.exe main program for GENIE
 # which is lightly customized from gevgen.  
 
-source captain-control.bash
-
-# Set the run number.
-captain-experiment mc
-captain-data-source gn
-captain-run-type spl
-captain-run-number 1
-
 # The number of events to generate
-EVENTS=10
+EVENTS=5
 
 # The output file name.
-GHEP_PREFIX=$(basename $(captain-file "ghep") ".root")
-GHEP_FILE="${GHEP_PREFIX}.$(captain-run-number).ghep.root"
+GHEP_RUN=1
+GHEP_PREFIX=captain-genie
+GHEP_FILE="captain-genie.${GHEP_RUN}.ghep.root"
 
 echo $GHEP_PREFIX
 echo $GHEP_FILE
 
 # The flux to use.  GENIE assumes the energy is in units of GeV, so
 # the peak energy is 5 GeV.
-FLUX="x*x*exp(-(x/5.0)**2)"
+FLUX='x*x*exp(-(x/5.0)**2)'
 
 # The neutrino flavor (PDG).  The default target is natural argon 
 PDG=14
@@ -32,42 +25,14 @@ PDG=14
 # Limit the amount of noise from GENIE
 LOGLEVEL=${GENIE}/config/Messenger_laconic.xml
 
-gevgen_capt.exe -r $(captain-run-number) \
+gevgen_capt.exe -r ${GHEP_RUN} \
     -o ${GHEP_PREFIX} \
     -n ${EVENTS} \
+    --seed 0 \
     -e 0.1,15.0 -p ${PDG} -f ${FLUX} \
+    --event-record-print-level 0 \
     --message-thresholds ${LOGLEVEL}
-gntpc -f rootracker -i ${GHEP_FILE} -o $(captain-file "gnmc") \
+
+gntpc -f rootracker -i ${GHEP_FILE} -o captain-genie.root \
     --message-thresholds ${LOGLEVEL}
 
-mv $GHEP_FILE $(captain-file "ghep")
-
-# Write a GEANT4 macro file to process the output.
-G4_MACRO=$(captain-file "g4in" "mac")
-cat >> ${G4_MACRO} <<EOF
-/dsim/control baseline 1.0
-/dsim/update
-
-/generator/kinematics/rooTracker/input $(captain-file "gnmc")
-/generator/kinematics/set rooTracker
-
-# Have exactly one interaction per event.
-/generator/count/fixed/number 1
-/generator/count/set fixed
-
-# Choose the position based on the density (and only in the drift volume).
-/generator/position/density/volume Drift
-/generator/position/set density
-
-/generator/add
-
-/run/beamOn ${EVENTS}
-EOF
-
-#####################################################
-# The is the meat of the script: Run the DETSIM, ELECSIM, calibration,
-# and reconstruction.  The file names are generated based on the 
-# commands above.
-#####################################################
-captain-process-detsim-macro $G4_MACRO
-# captain-run-reconstruction

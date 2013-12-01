@@ -82,7 +82,8 @@
               still be in effect if enabled..
               ** Only use that option if you understand what it means **
            --seed
-              Random number seed.
+              Random number seed.  A value of -1 uses a default seed value. 
+              A value of 0 uses a UUID based seed.
            --cross-sections
               Name (incl. full path) of an XML file with pre-computed
               cross-section values used for constructing splines.
@@ -130,6 +131,7 @@
 #include <TTree.h>
 #include <TSystem.h>
 #include <TVector3.h>
+#include <TRandom.h>
 #include <TH1.h>
 #include <TF1.h>
 
@@ -677,10 +679,13 @@ void GetCommandLineArgs(int argc, char ** argv)
   // random number seed
   if( parser.OptionExists("seed") ) {
     gOptRanSeed = parser.ArgAsLong("seed");
-    LOG("gevgen_capt", pINFO) << "Reading random number seed " << gOptRanSeed;
+    LOG("gevgen_capt", pINFO) 
+      << "Setting random number seed to " 
+      << gOptRanSeed;
   } else {
     gOptRanSeed = 0;
-    LOG("gevgen_capt", pINFO) << "Unspecified random number seed - Using default of " << gOptRanSeed;
+    LOG("gevgen_capt", pINFO) 
+      << "Unspecified random number seed - Using time based seed.";
   }
 
   // input cross-section file
@@ -710,12 +715,17 @@ void GetCommandLineArgs(int argc, char ** argv)
      << utils::print::PrintFramedMesg("gevgen_capt job configuration");
   LOG("gevgen_capt", pNOTICE) 
      << "MC Run Number: " << gOptRunNu;
-  if(gOptRanSeed != -1) {
+  if (gOptRanSeed != -1) {
+     if (gOptRanSeed == 0) {
+        gRandom->SetSeed(0);
+        gOptRanSeed = gRandom->GetSeed();
+     }
      LOG("gevgen_capt", pNOTICE) 
        << "Random number seed: " << gOptRanSeed;
-  } else {
+  } 
+  else {
      LOG("gevgen_capt", pNOTICE) 
-       << "Random number seed was not set, using default";
+       << "Random number set to default value";
   }
   LOG("gevgen_capt", pNOTICE) 
        << "Number of events requested: " << gOptNevents;
