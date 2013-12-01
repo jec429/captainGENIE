@@ -680,7 +680,7 @@ void GetCommandLineArgs(int argc, char ** argv)
     gOptRanSeed = parser.ArgAsLong("seed");
   } else {
     LOG("gevgen_capt", pINFO) << "Unspecified random number seed - Using default";
-    gOptRanSeed = -1;
+    gOptRanSeed = 0;
   }
 
   // input cross-section file
