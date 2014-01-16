@@ -21,3 +21,4 @@ v*r*p*_history.txt
 *_version_LinkDef.h
 *_version.h
 *.root
+genie-mcjob*.status
