@@ -3,17 +3,13 @@
 
 \program gevgen_capt
 
-\brief   A simple 'generic' GENIE v+A event generation driver (gevgen_capt).
+\brief A simple GENIE v+A event generation driver (gevgen_capt) customized for
+         CAPTAIN.
 
          It handles:
-         a) event generation for a fixed init state (v+A) at fixed energy, or
-         b) event generation for simple fluxes (specified either via some
+         a) event generation for simple fluxes (specified either via some
             functional form, tabular text file or a ROOT histogram) and for 
-            simple 'geometries' (a target mix with its corresponding weights)
-
-         For more complex event generation cases, for specific experiments, 
-         using the outputs of detailed neutrino flux simulations and realistic 
-         detector geometry descriptions see in $GENIE/src/support/.
+            the CAPTAIN 'geometries'.
 
          Syntax :
            gevgen_capt [-h] 
@@ -111,6 +107,8 @@
 
 \author  Costas Andreopoulos <costas.andreopoulos \at stfc.ac.uk>
          STFC, Rutherford Appleton Laboratory
+\author  Modified by Clark McGrew <clark.mcgrew \at stonybrook.eduk>
+         Stony Brook Univ.
 
 \created October 05, 2004
 
@@ -145,7 +143,6 @@
 #include "EVGDrivers/GMCJDriver.h"
 #include "EVGDrivers/GMCJMonitor.h"
 #include "Interaction/Interaction.h"
-#include "Messenger/Messenger.h"
 #include "Ntuple/NtpWriter.h"
 #include "Ntuple/NtpMCFormat.h"
 #include "Numerical/RandomGen.h"
@@ -160,6 +157,8 @@
 #include "Utils/SystemUtils.h"
 #include "Utils/CmdLnArgParser.h"
 
+#define LOG(x,y) std::cout
+
 #ifdef __GENIE_FLUX_DRIVERS_ENABLED__
 #ifdef __GENIE_GEOM_DRIVERS_ENABLED__
 #define __CAN_GENERATE_EVENTS_USING_A_FLUX_OR_TGTMIX__
@@ -169,210 +168,133 @@
 #endif
 #endif
 
-using std::string;
-using std::vector;
-using std::map;
-using std::ostringstream;
-
-using namespace genie;
-using namespace genie::controls;
-
 void GetCommandLineArgs (int argc, char ** argv);
 void Initialize         (void);
 void PrintSyntax        (void);
 
 #ifdef __CAN_GENERATE_EVENTS_USING_A_FLUX_OR_TGTMIX__
-void            GenerateEventsUsingFluxOrTgtMix();
-GeomAnalyzerI * GeomDriver              (void);
-GFluxI *        FluxDriver              (void);
-GFluxI *        MonoEnergeticFluxDriver (void);
-GFluxI *        TH1FluxDriver           (void);
+void                   GenerateEvents(void);
+genie::GeomAnalyzerI * GeomDriver              (void);
+genie::GFluxI *        FluxDriver              (void);
+genie::GFluxI *        MonoEnergeticFluxDriver (void);
+genie::GFluxI *        TH1FluxDriver           (void);
 #endif
-
-void GenerateEventsAtFixedInitState (void);
 
 //Default options (override them using the command line arguments):
 int           kDefOptNevents   = 0;         // n-events to generate
-string        kDefOptEvFilePrefix = "gntp"; // default file prefix
-NtpMCFormat_t kDefOptNtpFormat = kNFGHEP;   // ntuple format
+std::string        kDefOptEvFilePrefix = "gntp"; // default file prefix
+genie::NtpMCFormat_t kDefOptNtpFormat = genie::kNFGHEP;   // ntuple format
 Long_t        kDefOptRunNu     = 0;         // default run number
 
 //User-specified options:
 int             gOptNevents;      // n-events to generate
-string          gOptEvFilePrefix; // event file prefix
+std::string          gOptEvFilePrefix; // event file prefix
 double          gOptNuEnergy;     // neutrino E, or min neutrino E in spectrum
 double          gOptNuEnergyRange;// energy range in input spectrum
 int             gOptNuPdgCode;    // neutrino PDG code
-map<int,double> gOptTgtMix;       // target mix (each with its relative weight)
+std::map<int,double> gOptTgtMix;       // target mix (each with its relative weight)
 Long_t          gOptRunNu;        // run number
-string          gOptFlux;         // the flux to use.
+std::string          gOptFlux;         // the flux to use.
 bool            gOptWeighted;     
 bool            gOptUsingFluxOrTgtMix = false;
 long int        gOptRanSeed;      // random number seed
-string          gOptInpXSecFile;  // cross-section splines
+std::string          gOptInpXSecFile;  // cross-section splines
 TVector3        gOptNuDir(1,0,0); // Neutrino direction in genie.
 
 //____________________________________________________________________________
-int main(int argc, char ** argv)
-{
-  GetCommandLineArgs(argc,argv);
-  Initialize();
+int main(int argc, char ** argv) {
+    GetCommandLineArgs(argc,argv);
+    Initialize();
 
-  //
-  // Generate neutrino events
-  //
-  if(gOptUsingFluxOrTgtMix) {
-    GenerateEventsUsingFluxOrTgtMix();
-  } 
-  else {
-    GenerateEventsAtFixedInitState();
-  }
+    //
+    // Generate neutrino events
+    //
+    GenerateEvents();
 
-  return 0;
+    return 0;
 }
 
 //____________________________________________________________________________
-void Initialize()
-{
-  // Initialization of random number generators, cross-section table, 
-  // messenger thresholds, cache file
-  utils::app_init::MesgThresholds(RunOpt::Instance()->MesgThresholdFiles());
-  utils::app_init::CacheFile(RunOpt::Instance()->CacheFile());
-  utils::app_init::RandGen(gOptRanSeed);
-  utils::app_init::XSecTable(gOptInpXSecFile, false);
-
-  // Set GHEP print level
-  GHepRecord::SetPrintLevel(RunOpt::Instance()->EventRecordPrintLevel());
+void Initialize() {
+    // Initialization of random number generators, cross-section table, 
+    // messenger thresholds, cache file
+    genie::utils::app_init::MesgThresholds(
+        genie::RunOpt::Instance()->MesgThresholdFiles());
+    genie::utils::app_init::CacheFile(genie::RunOpt::Instance()->CacheFile());
+    genie::utils::app_init::RandGen(gOptRanSeed);
+    genie::utils::app_init::XSecTable(gOptInpXSecFile, false);
+    
+    // Set GHEP print level
+    genie::GHepRecord::SetPrintLevel(
+        genie::RunOpt::Instance()->EventRecordPrintLevel());
 }
 
-//____________________________________________________________________________
-void GenerateEventsAtFixedInitState(void)
-{
-  int neutrino = gOptNuPdgCode;
-  int target   = gOptTgtMix.begin()->first;
-  double Ev    = gOptNuEnergy;
-  TLorentzVector nu_p4(0.,0.,Ev,Ev); // px,py,pz,E (GeV)
-
-  // Create init state
-  InitialState init_state(target, neutrino);
-
-  // Create/config event generation driver 
-  GEVGDriver evg_driver;
-  evg_driver.SetEventGeneratorList(RunOpt::Instance()->EventGeneratorList());
-  evg_driver.SetUnphysEventMask(*RunOpt::Instance()->UnphysEventMask());
-  evg_driver.Configure(init_state);
-
-  // Initialize an Ntuple Writer
-  NtpWriter ntpw(kDefOptNtpFormat, gOptRunNu);
-  ntpw.CustomizeFilenamePrefix(gOptEvFilePrefix);
-  ntpw.Initialize();
-
-  // Create an MC Job Monitor
-  GMCJMonitor mcjmonitor(gOptRunNu);
-  mcjmonitor.SetRefreshRate(RunOpt::Instance()->MCJobStatusRefreshRate());
-
-  LOG("gevgen_capt", pNOTICE) 
-    << "\n ** Will generate " << gOptNevents << " events for \n" 
-    << init_state << " at Ev = " << Ev << " GeV";
-
-  // Generate events / print the GHEP record / add it to the ntuple
-  int ievent = 0;
-  while (ievent < gOptNevents) {
-     LOG("gevgen_capt", pNOTICE) 
-        << " *** Generating event............ " << ievent;
-
-     // generate a single event
-     EventRecord * event = evg_driver.GenerateEvent(nu_p4);
-
-     if(!event) {
-        LOG("gevgen_capt", pNOTICE) 
-          << "Last attempt failed. Re-trying....";
-        continue;
-     }
-
-     LOG("gevgen_capt", pNOTICE) 
-        << "Generated Event GHEP Record: " << *event;
-
-     // add event at the output ntuple, refresh the mc job monitor & clean up
-     ntpw.AddEventRecord(ievent, event);
-     mcjmonitor.Update(ievent,event);
-     ievent++;
-     delete event;
-  }
-
-  // Save the generated MC events
-  ntpw.Save();
-}
-//____________________________________________________________________________
-
-//............................................................................
-void GenerateEventsUsingFluxOrTgtMix(void)
-{
-  // Get flux and geom drivers
-  GFluxI *        flux_driver = FluxDriver();
-  GeomAnalyzerI * geom_driver = GeomDriver();
-
-  // Create the monte carlo job driver
-  GMCJDriver * mcj_driver = new GMCJDriver;
-  mcj_driver->SetEventGeneratorList(RunOpt::Instance()->EventGeneratorList());
-  mcj_driver->SetUnphysEventMask(*RunOpt::Instance()->UnphysEventMask());
-  mcj_driver->UseFluxDriver(flux_driver);
-  mcj_driver->UseGeomAnalyzer(geom_driver);
-  mcj_driver->Configure();
-  mcj_driver->UseSplines();
-  if(!gOptWeighted) 
+void GenerateEvents(void) {
+    // Get flux and geom drivers
+    genie::GFluxI *        flux_driver = FluxDriver();
+    genie::GeomAnalyzerI * geom_driver = GeomDriver();
+    
+    // Create the monte carlo job driver
+    genie::GMCJDriver * mcj_driver = new genie::GMCJDriver;
+    mcj_driver->SetEventGeneratorList(
+        genie::RunOpt::Instance()->EventGeneratorList());
+    mcj_driver->SetUnphysEventMask(
+        *genie::RunOpt::Instance()->UnphysEventMask());
+    mcj_driver->UseFluxDriver(flux_driver);
+    mcj_driver->UseGeomAnalyzer(geom_driver);
+    mcj_driver->Configure();
+    mcj_driver->UseSplines();
+    if(!gOptWeighted) 
         mcj_driver->ForceSingleProbScale();
+    
+    // Initialize an Ntuple Writer to save GHEP records into a TTree
+    genie::NtpWriter ntpw(kDefOptNtpFormat, gOptRunNu);
+    ntpw.CustomizeFilenamePrefix(gOptEvFilePrefix);
+    ntpw.Initialize();
+    
+    // Create an MC Job Monitor
+    genie::GMCJMonitor mcjmonitor(gOptRunNu);
+    mcjmonitor.SetRefreshRate(
+        genie::RunOpt::Instance()->MCJobStatusRefreshRate());
 
-  // Initialize an Ntuple Writer to save GHEP records into a TTree
-  NtpWriter ntpw(kDefOptNtpFormat, gOptRunNu);
-  ntpw.CustomizeFilenamePrefix(gOptEvFilePrefix);
-  ntpw.Initialize();
-
-  // Create an MC Job Monitor
-  GMCJMonitor mcjmonitor(gOptRunNu);
-  mcjmonitor.SetRefreshRate(RunOpt::Instance()->MCJobStatusRefreshRate());
-
-  // Generate events / print the GHEP record / add it to the ntuple
-  int ievent = 0;
-  while ( ievent < gOptNevents) {
-
-     LOG("gevgen_capt", pNOTICE) << " *** Generating event..... " << ievent;
-
-     // generate a single event for neutrinos coming from the specified flux
-     EventRecord * event = mcj_driver->GenerateEvent();
-
-     LOG("gevgen_capt", pNOTICE) << "Generated Event GHEP Record: " << *event;
-
-     // add event at the output ntuple, refresh the mc job monitor & clean-up
-     ntpw.AddEventRecord(ievent, event);
-     mcjmonitor.Update(ievent,event);
-     ievent++;
-     delete event;
-  }
-
-  // Save the generated MC events
-  ntpw.Save();
-
-  delete flux_driver;
-  delete geom_driver;
-  delete mcj_driver;;
+    // Generate events / print the GHEP record / add it to the ntuple
+    int ievent = 0;
+    while ( ievent < gOptNevents) {
+         // generate a single event for neutrinos coming from the specified
+         // flux
+        genie::EventRecord * event = mcj_driver->GenerateEvent();
+         
+        // add event at the output ntuple, refresh the mc job monitor and
+        // clean-up
+        ntpw.AddEventRecord(ievent, event);
+        mcjmonitor.Update(ievent,event);
+        delete event;
+        ++ievent;
+    }
+    
+    // Save the generated MC events
+    ntpw.Save();
+    
+    delete flux_driver;
+    delete geom_driver;
+    delete mcj_driver;;
 }
 
 //____________________________________________________________________________
-GeomAnalyzerI * GeomDriver(void)
+genie::GeomAnalyzerI * GeomDriver(void)
 {
 // create a trivial point geometry with the specified target or target mix
 
-  GeomAnalyzerI * geom_driver = new geometry::PointGeomAnalyzer(gOptTgtMix);
+  genie::GeomAnalyzerI * geom_driver = new genie::geometry::PointGeomAnalyzer(gOptTgtMix);
   return geom_driver;
 }
 
 //____________________________________________________________________________
-GFluxI * FluxDriver(void)
+genie::GFluxI * FluxDriver(void)
 {
 // create & configure one of the generic flux drivers
 //
-  GFluxI * flux_driver = 0;
+  genie::GFluxI * flux_driver = 0;
 
   if(gOptNuEnergyRange<0) flux_driver = MonoEnergeticFluxDriver();
   else flux_driver = TH1FluxDriver();
@@ -381,22 +303,22 @@ GFluxI * FluxDriver(void)
 }
 
 //____________________________________________________________________________
-GFluxI * MonoEnergeticFluxDriver(void)
+genie::GFluxI * MonoEnergeticFluxDriver(void)
 {
 //
 //
-  flux::GMonoEnergeticFlux * flux = 
-              new flux::GMonoEnergeticFlux(gOptNuEnergy, gOptNuPdgCode);
-  GFluxI * flux_driver = dynamic_cast<GFluxI *>(flux);
+  genie::flux::GMonoEnergeticFlux * flux = 
+    new genie::flux::GMonoEnergeticFlux(gOptNuEnergy, gOptNuPdgCode);
+  genie::GFluxI * flux_driver = dynamic_cast<genie::GFluxI *>(flux);
   return flux_driver;
 }
 
 //____________________________________________________________________________
-GFluxI * TH1FluxDriver(void)
+genie::GFluxI * TH1FluxDriver(void)
 {
 // 
 //
-  flux::GCylindTH1Flux * flux = new flux::GCylindTH1Flux;
+  genie::flux::GCylindTH1Flux * flux = new genie::flux::GCylindTH1Flux;
   TH1D * spectrum = 0;
 
   int flux_entries = 100000;
@@ -408,13 +330,13 @@ GFluxI * TH1FluxDriver(void)
   // check whether the input flux is a file or a functional form
   //
   bool input_is_text_file = ! gSystem->AccessPathName(gOptFlux.c_str());
-  bool input_is_root_file = gOptFlux.find(".root") != string::npos &&
-                            gOptFlux.find(",") != string::npos;
+  bool input_is_root_file = gOptFlux.find(".root") != std::string::npos &&
+                            gOptFlux.find(",") != std::string::npos;
   if (input_is_text_file) {
     //
     // ** generate the flux histogram from the x,y pairs in the input text file
     //
-    Spline * input_flux = new Spline(gOptFlux.c_str());
+    genie::Spline * input_flux = new genie::Spline(gOptFlux.c_str());
     int  n = 100;
     double estep = (emax-emin)/(n-1);
     double ymax  = -1, ry = -1, gy = -1, e = -1;
@@ -424,7 +346,7 @@ GFluxI * TH1FluxDriver(void)
     }
     ymax *= 1.3;
 
-    RandomGen * r = RandomGen::Instance();
+    genie::RandomGen * r = genie::RandomGen::Instance();
     spectrum  = new TH1D("spectrum","neutrino flux", 300, emin, emax);
     spectrum->SetDirectory(0);
 
@@ -433,7 +355,7 @@ GFluxI * TH1FluxDriver(void)
       unsigned int iter=0;
       while(!accept) {
         iter++;
-        if(iter > kRjMaxIterations) {
+        if(iter > genie::controls::kRjMaxIterations) {
            LOG("gevgen_capt", pFATAL) << "Couldn't generate a flux histogram";
            exit(1);
         }
@@ -450,7 +372,7 @@ GFluxI * TH1FluxDriver(void)
     //
     // ** extract specified flux histogram from the input root file
     //
-    vector<string> fv = utils::str::Split(gOptFlux,",");
+    std::vector<std::string> fv = genie::utils::str::Split(gOptFlux,",");
     assert(fv.size()==2); 
     assert( !gSystem->AccessPathName(fv[0].c_str()) );
 
@@ -509,7 +431,7 @@ GFluxI * TH1FluxDriver(void)
   flux->SetTransverseRadius (-1);
   flux->AddEnergySpectrum   (gOptNuPdgCode, spectrum);
 
-  GFluxI * flux_driver = dynamic_cast<GFluxI *>(flux);
+  genie::GFluxI * flux_driver = dynamic_cast<genie::GFluxI *>(flux);
   return flux_driver;
 }
 //............................................................................
@@ -520,12 +442,12 @@ void GetCommandLineArgs(int argc, char ** argv)
   LOG("gevgen_capt", pINFO) << "Parsing command line arguments";
 
   // Common run options. Set defaults and read.
-  RunOpt::Instance()->EnableBareXSecPreCalc(true);
-  RunOpt::Instance()->ReadFromCommandLine(argc,argv);
+  genie::RunOpt::Instance()->EnableBareXSecPreCalc(true);
+  genie::RunOpt::Instance()->ReadFromCommandLine(argc,argv);
 
   // Parse run options for this app
 
-  CmdLnArgParser parser(argc,argv);
+  genie::CmdLnArgParser parser(argc,argv);
 
   // help?
   bool help = parser.OptionExists('h');
@@ -574,7 +496,7 @@ void GetCommandLineArgs(int argc, char ** argv)
   if(parser.OptionExists('s')) {
     LOG("gevgen_capt", pWARN) 
       << "-s option no longer available. Please read the revised code documentation";
-    gAbortingInErr = true;
+    // gAbortingInErr = true;
     exit(1);
   }
 
@@ -585,12 +507,12 @@ void GetCommandLineArgs(int argc, char ** argv)
   // neutrino energy
   if( parser.OptionExists('e') ) {
     LOG("gevgen_capt", pINFO) << "Reading neutrino energy";
-    string nue = parser.ArgAsString('e');
+    std::string nue = parser.ArgAsString('e');
 
     // is it just a value or a range (comma separated set of values)
-    if(nue.find(",") != string::npos) {
+    if(nue.find(",") != std::string::npos) {
        // split the comma separated list
-       vector<string> nurange = utils::str::Split(nue, ",");
+       std::vector<std::string> nurange = genie::utils::str::Split(nue, ",");
        assert(nurange.size() == 2);   
        double emin = atof(nurange[0].c_str());
        double emax = atof(nurange[1].c_str());
@@ -629,30 +551,30 @@ void GetCommandLineArgs(int argc, char ** argv)
   bool using_tgtmix = false;
   if( parser.OptionExists('t') ) {
     LOG("gevgen_capt", pINFO) << "Reading target mix";
-    string stgtmix = parser.ArgAsString('t');
+    std::string stgtmix = parser.ArgAsString('t');
     gOptTgtMix.clear();
-    vector<string> tgtmix = utils::str::Split(stgtmix,",");
+    std::vector<std::string> tgtmix = genie::utils::str::Split(stgtmix,",");
     if (tgtmix.size()==1) {
          int    pdg = atoi(tgtmix[0].c_str());
          double wgt = 1.0;
-         gOptTgtMix.insert(map<int, double>::value_type(pdg, wgt));
+         gOptTgtMix.insert(std::map<int, double>::value_type(pdg, wgt));
     } 
     else {
       using_tgtmix = true;
-      vector<string>::const_iterator tgtmix_iter = tgtmix.begin();
+      std::vector<std::string>::const_iterator tgtmix_iter = tgtmix.begin();
       for( ; tgtmix_iter != tgtmix.end(); ++tgtmix_iter) {
-        string tgt_with_wgt = *tgtmix_iter;
-        string::size_type open_bracket  = tgt_with_wgt.find("[");
-        string::size_type close_bracket = tgt_with_wgt.find("]");
-        string::size_type ibeg = 0;
-        string::size_type iend = open_bracket;
-        string::size_type jbeg = open_bracket+1;
-        string::size_type jend = close_bracket-1;
+        std::string tgt_with_wgt = *tgtmix_iter;
+        std::string::size_type open_bracket  = tgt_with_wgt.find("[");
+        std::string::size_type close_bracket = tgt_with_wgt.find("]");
+        std::string::size_type ibeg = 0;
+        std::string::size_type iend = open_bracket;
+        std::string::size_type jbeg = open_bracket+1;
+        std::string::size_type jend = close_bracket-1;
         int    pdg = atoi(tgt_with_wgt.substr(ibeg,iend).c_str());
         double wgt = atof(tgt_with_wgt.substr(jbeg,jend).c_str());
         LOG("Main", pNOTICE)
           << "Adding to target mix: pdg = " << pdg << ", wgt = " << wgt;
-        gOptTgtMix.insert(map<int, double>::value_type(pdg, wgt));
+        gOptTgtMix.insert(std::map<int, double>::value_type(pdg, wgt));
       }//tgtmix_iter
     }
   } else {
@@ -712,7 +634,7 @@ void GetCommandLineArgs(int argc, char ** argv)
   //
   LOG("gevgen_capt", pNOTICE) 
      << "\n" 
-     << utils::print::PrintFramedMesg("gevgen_capt job configuration");
+     << genie::utils::print::PrintFramedMesg("gevgen_capt job configuration");
   LOG("gevgen_capt", pNOTICE) 
      << "MC Run Number: " << gOptRunNu;
   if (gOptRanSeed != -1) {
@@ -752,7 +674,7 @@ void GetCommandLineArgs(int argc, char ** argv)
       << "Neutrino code (PDG): " << gOptNuPdgCode;
   LOG("gevgen_capt", pNOTICE) 
       << "Target code (PDG) & weight fraction (in case of multiple targets): ";
-  map<int,double>::const_iterator iter;
+  std::map<int,double>::const_iterator iter;
   for(iter = gOptTgtMix.begin(); iter != gOptTgtMix.end(); ++iter) {
       int    tgtpdgc = iter->first;
       double wgt     = iter->second;
@@ -761,7 +683,7 @@ void GetCommandLineArgs(int argc, char ** argv)
   }
   LOG("gevgen_capt", pNOTICE) << "\n";
 
-  LOG("gevgen_capt", pNOTICE) << *RunOpt::Instance();
+  LOG("gevgen_capt", pNOTICE) << *genie::RunOpt::Instance();
 
 }
 //____________________________________________________________________________
@@ -793,5 +715,5 @@ void PrintSyntax(void)
 
 // Local Variables:
 // mode:c++
-// c-basic-offset:2
+// c-basic-offset: 4
 // End:
