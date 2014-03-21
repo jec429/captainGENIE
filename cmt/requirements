@@ -1,12 +1,15 @@
 package captainGENIE
 
 use genie v* LCG_Interfaces
+use ROOT v* LCG_Interfaces
 
 # Generate events for captain 
 application gevgen_capt ../app/captainGENIE.cxx
 
 # Generic genie generator
 application gevgen_generic ../app/genericGENIE.cxx
+
+macro captainGENIE_linkopts " -lMathMore "
 
 path_remove PATH "$(CAPTAINGENIEROOT)/scripts"
 path_prepend PATH "$(CAPTAINGENIEROOT)/scripts""
