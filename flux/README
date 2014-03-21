@@ -1,0 +1,9 @@
+Example Fluxes:
+
+  ** Flux files generously provided by Mary Bishai.  This are on axis at
+     810 km.  These only apply if we decide to put CAPTAIN in the MINOS
+     hall. 
+       
+       Neutrino running:     fluka08_me000z200i_810km_0kmoa_flux.txt
+       Antineutrino running: fluka08_me000z200ni_810km_0kmoa_flux.txt
+
