@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# An example of a script using captain-control to run a DETSIM macro.
+# This is actually pretty convenient to run from the command line.
+
+source captain-control.bash
+
+# Do a little bit of error checking.
+if [ ${#1} = 0 ]; then
+    echo "usage: control-genie.sh events [run] [geant-macro]"
+    captain-error "The number of events must be passed as the first argument."
+fi
+
+# Set the file name fields.
+captain-experiment numi
+captain-data-source gn
+captain-run-type spl
+captain-run-number 0
+
+# Set the run number from the command line.
+if [ ${#2} != 0 ]; then
+    captain-run-number ${2}
+fi
+
+# Set the flux for the NuMI neutrino beam at 810km on axis.  This is
+# only useful if we put CAPTAIN in the northern wilds of Minnesota.
+FLUX_FILE=${CAPTAINGENIEROOT}/flux/fluka08_me000z200i_810km_0kmoa_flux.txt
+
+# Add the muon neutrino flux
+FLUX=text,14,${FLUX_FILE},0,2
+
+# Add the muon anti-neutrino flux
+FLUX=${FLUX}:text,-14,${FLUX_FILE},0,5
+
+# Add the electron neutrino flux
+FLUX=${FLUX}:text,12,${FLUX_FILE},0,1
+
+# Add the electron anti-neutrino flux
+FLUX=${FLUX}:text,-12,${FLUX_FILE},0,4
+
+#####################################################
+# The is the meat of the script: Run the DETSIM, ELECSIM, calibration,
+# and reconstruction.
+#####################################################
+if [ ${#3} = 0 ]; then
+    captain-run-genie-simple ${1} ${FLUX}
+else
+    captain-run-genie-simple ${1} ${FLUX} ${3}
+fi
+
+#####################################################
+# Run the detector simulation.  This fails gracefully 
+# if it's not available.
+#####################################################
+captain-process-detsim-macro ${DETSIM_MACRO}
+
+#####################################################
+# This also fails gracefully if it's not available.
+#####################################################
+captain-run-reconstruction

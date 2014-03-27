@@ -17,3 +17,10 @@ path_prepend PATH "$(CAPTAINGENIEROOT)/scripts""
 path_remove PATH "$(CAPTAINGENIEROOT)/$(captainGENIE_tag)"
 path_prepend PATH "$(CAPTAINGENIEROOT)/$(captainGENIE_tag)""
 
+# make the captControl package available when working directly in the
+# captainGENIE package.  This lets basic control scripts be run (as long as
+# they don't use detSim.
+
+private
+use captControl
+end_private
