@@ -185,7 +185,7 @@ genie::GFluxI* MonoEnergeticFluxDriver(std::string description) {
         = genie::utils::str::Split(description,",");
 
     // Check if this is a monoenergetic flux.
-    if (splitFlux.size() > 0 || splitFlux[0] != "mono")  return NULL;
+    if (splitFlux.size() < 1 || splitFlux[0] != "mono")  return NULL;
 
     if (splitFlux.size() != 3) {
         std::cout << "Invalid monoenergetic flux description: " << description
@@ -278,6 +278,9 @@ TH1D* TextFlux(int pdg, std::string file, int energyColumn, int fluxColumn) {
     std::vector<double> energy;
     std::vector<double> flux;
     std::string line;
+
+    double minFlux = 1E+300;
+    double maxFlux = 0.0;
     while (std::getline(input,line)) {
         line = line.substr(0,line.find("#"));
         std::istringstream inputLine(line);
@@ -289,11 +292,14 @@ TH1D* TextFlux(int pdg, std::string file, int energyColumn, int fluxColumn) {
             }
             if (column == fluxColumn) {
                 flux.push_back(val);
+                if (val>0) {
+                    minFlux = std::min(minFlux,val);
+                    maxFlux = std::max(maxFlux,val);
+                }
             }
             ++column;
         }
     }
-
 
     std::cout << "Generate flux for " << pdg
               << " from " << file 
@@ -316,9 +322,14 @@ TH1D* TextFlux(int pdg, std::string file, int energyColumn, int fluxColumn) {
 
     int bins = spectrum->GetNbinsX();
     ROOT::Math::Interpolator func(energy,flux);
+
     for (int i=1; i<bins+1; ++i) {
         double x = spectrum->GetBinCenter(i);
-        spectrum->SetBinContent(i+1, func.Eval(x));
+        double f = func.Eval(x);
+        if (f < minFlux) {
+            f = minFlux;
+        }
+        spectrum->SetBinContent(i, f);
     }
 
     return spectrum;
@@ -330,12 +341,24 @@ genie::GFluxI * FluxDriver(void) {
     std::vector<std::string> splitOption 
         = genie::utils::str::Split(gOptFlux,":");
 
+    std::cout << "The options: " << gOptFlux << std::endl;
+    std::cout << "The options: " << splitOption.size() << std::endl;
+
     if (splitOption.size() == 1) {
         // Try the monoenergetic flux driver.  This is a special case, and
         // there can only be one.  Just return the created flux driver.
         genie::GFluxI* fluxDriver = MonoEnergeticFluxDriver(splitOption[0]);
         if (fluxDriver) return fluxDriver;
     }
+
+#ifdef SAVE_FLUX
+    // Open a file to record the fluxes used in the simulation
+    std::ostringstream fluxFileName;
+    fluxFileName << gOptEvFilePrefix 
+                 << "." << gOptRunNu
+                 << ".flux.root";
+    TFile fluxFile(fluxFileName.str().c_str(),"recreate");
+#endif
 
     // All other flux types are described by a histogram.
     genie::flux::GCylindTH1Flux* fluxDriver = new genie::flux::GCylindTH1Flux;
@@ -353,7 +376,7 @@ genie::GFluxI * FluxDriver(void) {
             std::exit(1);
         }
         if (splitFlux[0] == "mono") {
-            std::cout << "Cannot mix monoenergetic fluxes with other types."
+            std::cout << "Cannot mix monoenergetic fluxes with other types: "
                       << gOptFlux << std::endl;
             std::exit(1);
         }
@@ -369,6 +392,11 @@ genie::GFluxI * FluxDriver(void) {
             double emax = std::atof(splitFlux[5].c_str());
             TH1D* flux = FunctionalFlux(pdg,splitFlux[2], 
                                         bins, emin, emax);
+#ifdef SAVE_FLUX
+            flux->Print();
+            flux->Write();
+#endif
+            flux->SetDirectory(0);
             fluxDriver->AddEnergySpectrum(pdg, flux);
             continue;
         }
@@ -380,6 +408,11 @@ genie::GFluxI * FluxDriver(void) {
             }
             int pdg = std::atoi(splitFlux[1].c_str());
             TH1D* flux = HistogramFlux(pdg, splitFlux[2], splitFlux[3]);
+#ifdef SAVE_FLUX
+            flux->Print();
+            flux->Write();
+#endif
+            flux->SetDirectory(0);
             fluxDriver->AddEnergySpectrum(pdg, flux);
             continue;
         }
@@ -394,10 +427,19 @@ genie::GFluxI * FluxDriver(void) {
             int fluxColumn = std::atoi(splitFlux[4].c_str());
             TH1D* flux = TextFlux(pdg,splitFlux[2], 
                                   energyColumn, fluxColumn);
+#ifdef SAVE_FLUX
+            flux->Print();
+            flux->Write();
+#endif
+            flux->SetDirectory(0);
             fluxDriver->AddEnergySpectrum(pdg, flux);
             continue;
         }
     }
+
+#ifdef SAVE_FLUX
+    fluxFile.Close();
+#endif
 
     return fluxDriver;
 }
