@@ -351,14 +351,8 @@ genie::GFluxI * FluxDriver(void) {
         if (fluxDriver) return fluxDriver;
     }
 
-#ifdef SAVE_FLUX
-    // Open a file to record the fluxes used in the simulation
-    std::ostringstream fluxFileName;
-    fluxFileName << gOptEvFilePrefix 
-                 << "." << gOptRunNu
-                 << ".flux.root";
-    TFile fluxFile(fluxFileName.str().c_str(),"recreate");
-#endif
+    typedef std::vector< std::pair< int , TH1D* > > FluxVect;
+    FluxVect histogramFluxes;
 
     // All other flux types are described by a histogram.
     genie::flux::GCylindTH1Flux* fluxDriver = new genie::flux::GCylindTH1Flux;
@@ -392,12 +386,8 @@ genie::GFluxI * FluxDriver(void) {
             double emax = std::atof(splitFlux[5].c_str());
             TH1D* flux = FunctionalFlux(pdg,splitFlux[2], 
                                         bins, emin, emax);
-#ifdef SAVE_FLUX
-            flux->Print();
-            flux->Write();
-#endif
+            histogramFluxes.push_back(std::make_pair(pdg,flux));
             flux->SetDirectory(0);
-            fluxDriver->AddEnergySpectrum(pdg, flux);
             continue;
         }
         if (splitFlux[0] == "hist") {
@@ -408,12 +398,8 @@ genie::GFluxI * FluxDriver(void) {
             }
             int pdg = std::atoi(splitFlux[1].c_str());
             TH1D* flux = HistogramFlux(pdg, splitFlux[2], splitFlux[3]);
-#ifdef SAVE_FLUX
-            flux->Print();
-            flux->Write();
-#endif
+            histogramFluxes.push_back(std::make_pair(pdg,flux));
             flux->SetDirectory(0);
-            fluxDriver->AddEnergySpectrum(pdg, flux);
             continue;
         }
         if (splitFlux[0] == "text") {
@@ -427,20 +413,35 @@ genie::GFluxI * FluxDriver(void) {
             int fluxColumn = std::atoi(splitFlux[4].c_str());
             TH1D* flux = TextFlux(pdg,splitFlux[2], 
                                   energyColumn, fluxColumn);
-#ifdef SAVE_FLUX
-            flux->Print();
-            flux->Write();
-#endif
+            histogramFluxes.push_back(std::make_pair(pdg,flux));
             flux->SetDirectory(0);
-            fluxDriver->AddEnergySpectrum(pdg, flux);
             continue;
         }
     }
 
+#define SAVE_FLUX
 #ifdef SAVE_FLUX
+    // Open a file to record the fluxes used in the simulation
+    std::ostringstream fluxFileName;
+    fluxFileName << gOptEvFilePrefix 
+                 << "." << gOptRunNu
+                 << ".flux.root";
+    TFile fluxFile(fluxFileName.str().c_str(),"recreate");
+
+    for (FluxVect::iterator f = histogramFluxes.begin();
+         f != histogramFluxes.end(); ++f) {
+        f->second->Write();
+    }
+
     fluxFile.Close();
 #endif
 
+    for (FluxVect::iterator f = histogramFluxes.begin();
+         f != histogramFluxes.end(); ++f) {
+        fluxDriver->AddEnergySpectrum(f->first, f->second);
+    }
+
+    
     return fluxDriver;
 }
 
