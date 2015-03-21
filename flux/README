@@ -6,5 +6,7 @@ Example Fluxes:
        
        Neutrino running:     fluka08_me000z200i_810km_0kmoa_flux.txt
        Antineutrino running: fluka08_me000z200ni_810km_0kmoa_flux.txt
-
-first test commit
+  
+  ** NuMI_numuflux.txt contains the medium-energy muon neutrino flux.
+  The units are neutrinos/GeV/m^{2}/10^{6} POT.
+  The ROOT file was provided by Aaron Higuera Pichardo and then converted into a text file.
