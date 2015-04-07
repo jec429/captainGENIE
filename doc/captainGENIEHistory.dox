@@ -13,4 +13,17 @@ FIRST FREEZE
 Freeze in preparation for the first round of CAPTAIN-MINERvA studies using
 the CAPTAIN software.
 
+
+\section captainGENIE_v0r0p1_history Version 0.0.1
+
+Freeze information:
+   - Freeze Date: Tue Apr  7 15:16:22 2015
+   - Freeze User: mcgrew
+   - Freeze Host: boxer boxer 
+
+
+NEW FEATURE:
+
+** Add the NuMI fluxes for CAPTAIN-MINERvA studies.
+
 */
