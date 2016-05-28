@@ -2,6 +2,9 @@ package captainGENIE
 
 use genie v* LCG_Interfaces
 use ROOT v* LCG_Interfaces
+use GSL v* LCG_Interfaces
+
+apply_tag ROOT_use_MathMore
 
 # Generate events for captain 
 application gevgen_capt ../app/captainGENIE.cxx
@@ -9,7 +12,7 @@ application gevgen_capt ../app/captainGENIE.cxx
 # Generic genie generator
 application gevgen_generic ../app/genericGENIE.cxx
 
-macro captainGENIE_linkopts " -lMathMore "
+macro captainGENIE_linkopts " $(mathmore_linkopts) "
 
 path_remove PATH "$(CAPTAINGENIEROOT)/scripts"
 path_prepend PATH "$(CAPTAINGENIEROOT)/scripts""

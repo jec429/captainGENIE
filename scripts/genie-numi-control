@@ -27,7 +27,7 @@ fi
 FLUX_FILE=${CAPTAINGENIEROOT}/flux/fluka08_me000z200i_810km_0kmoa_flux.txt
 
 # Add the muon neutrino flux
-FLUX=text,14,${FLUX_FILE},0,2
+# FLUX=text,14,${FLUX_FILE},0,2
 
 # Add the muon anti-neutrino flux
 # FLUX=${FLUX}:text,-14,${FLUX_FILE},0,5
@@ -37,6 +37,10 @@ FLUX=text,14,${FLUX_FILE},0,2
 
 # Add the electron anti-neutrino flux
 # FLUX=${FLUX}:text,-12,${FLUX_FILE},0,4
+
+# Set the flux for the NuMI neutrino beam at MINERvA on axis.
+FLUX_FILE=${CAPTAINGENIEROOT}/flux/NuMI_numuflux.txt
+FLUX=text,14,${FLUX_FILE},0,1
 
 #####################################################
 # The is the meat of the script: Run the DETSIM, ELECSIM, calibration,
